@@ -1,0 +1,2879 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MirrorMe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/lucide-static@0.263.1/font/lucide.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #111118;
+  --surface2: #18181f;
+  --surface3: #1e1e28;
+  --border: #2a2a38;
+  --border2: #333345;
+  --accent: #c8a96e;
+  --accent2: #e8c98e;
+  --accent-glow: rgba(200,169,110,0.15);
+  --text: #f0ede8;
+  --text2: #9896a0;
+  --text3: #5a5868;
+  --danger: #e05a5a;
+  --success: #5ab88a;
+  --info: #5a8ae0;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --font-display: 'DM Serif Display', serif;
+  --font-body: 'DM Sans', sans-serif;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* ── PIN SCREEN ── */
+#pin-screen {
+  position: fixed; inset: 0; z-index: 1000;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 48px; padding: 40px;
+}
+
+.pin-logo {
+  text-align: center;
+}
+
+.pin-logo h1 {
+  font-family: var(--font-display);
+  font-size: 42px;
+  color: var(--text);
+  letter-spacing: -1px;
+}
+
+.pin-logo p {
+  color: var(--text3);
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 6px;
+  font-weight: 300;
+}
+
+.pin-dots {
+  display: flex; gap: 16px;
+}
+
+.pin-dot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--border2);
+  transition: all 0.2s;
+}
+
+.pin-dot.filled {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.pin-dot.error {
+  border-color: var(--danger);
+  background: var(--danger);
+  animation: shake 0.4s ease;
+}
+
+@keyframes shake {
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-8px)}
+  40%{transform:translateX(8px)}
+  60%{transform:translateX(-6px)}
+  80%{transform:translateX(6px)}
+}
+
+.pin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 260px;
+}
+
+.pin-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 22px;
+  font-weight: 400;
+  width: 100%; aspect-ratio: 1;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.pin-btn:active {
+  background: var(--surface3);
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: scale(0.94);
+}
+
+.pin-btn.delete {
+  font-size: 18px;
+  color: var(--text2);
+}
+
+.pin-msg {
+  color: var(--text3);
+  font-size: 13px;
+  text-align: center;
+  min-height: 20px;
+}
+
+.pin-msg.error { color: var(--danger); }
+
+/* ── APP ── */
+#app { display: none; min-height: 100vh; }
+
+/* ── HEADER ── */
+.app-header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(10,10,15,0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.app-header h1 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  letter-spacing: -0.5px;
+}
+
+.header-right {
+  display: flex; gap: 10px;
+}
+
+.icon-btn {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+  font-size: 18px;
+}
+
+.icon-btn:active { background: var(--surface3); color: var(--accent); }
+
+/* ── NAV ── */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(10,10,15,0.95);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  display: flex;
+  padding: 8px 0 20px;
+}
+
+.nav-item {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  cursor: pointer;
+  color: var(--text3);
+  transition: color 0.2s;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.nav-item i { font-size: 20px; }
+.nav-item.active { color: var(--accent); }
+
+/* ── PAGES ── */
+.page { display: none; padding: 20px 20px 100px; }
+.page.active { display: block; }
+
+/* ── HOME ── */
+.home-greeting {
+  padding: 8px 0 24px;
+}
+
+.home-greeting .date {
+  color: var(--text3);
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.home-greeting h2 {
+  font-family: var(--font-display);
+  font-size: 32px;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+}
+
+.streak-card {
+  background: linear-gradient(135deg, var(--surface2), var(--surface3));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.streak-info h3 {
+  font-family: var(--font-display);
+  font-size: 36px;
+  color: var(--accent);
+}
+
+.streak-info p {
+  color: var(--text2);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.streak-icon {
+  width: 56px; height: 56px;
+  background: var(--accent-glow);
+  border: 1px solid rgba(200,169,110,0.3);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent);
+  font-size: 24px;
+}
+
+.cta-btn {
+  width: 100%;
+  background: var(--accent);
+  color: #0a0a0f;
+  border: none;
+  border-radius: var(--radius);
+  padding: 18px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.3px;
+  margin-bottom: 16px;
+}
+
+.cta-btn:active { opacity: 0.85; transform: scale(0.98); }
+
+.section-title {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text3);
+  font-weight: 600;
+  margin-bottom: 12px;
+  margin-top: 24px;
+}
+
+.insight-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.insight-card::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--accent);
+}
+
+.insight-card .insight-label {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.insight-card p {
+  color: var(--text2);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.quick-stats {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; margin-top: 4px;
+}
+
+.stat-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+}
+
+.stat-card .stat-val {
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--text);
+  line-height: 1;
+}
+
+.stat-card .stat-label {
+  color: var(--text3);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* ── REGISTER ── */
+.tab-bar {
+  display: flex; gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 20px;
+  scrollbar-width: none;
+}
+.tab-bar::-webkit-scrollbar { display: none; }
+
+.tab {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text3);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+
+.tab i { font-size: 14px; }
+.tab.active { background: var(--accent); color: #0a0a0f; border-color: var(--accent); font-weight: 600; }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── FORM ELEMENTS ── */
+.field-group { margin-bottom: 20px; }
+
+.field-label {
+  font-size: 13px;
+  color: var(--text2);
+  font-weight: 500;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.field-label span {
+  color: var(--text3);
+  font-weight: 300;
+  font-size: 12px;
+}
+
+.time-input, .text-input, .select-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  transition: border-color 0.2s;
+  appearance: none;
+}
+
+.time-input:focus, .text-input:focus, .select-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.time-input { color-scheme: dark; }
+
+textarea.text-input {
+  resize: vertical;
+  min-height: 90px;
+  line-height: 1.5;
+}
+
+.btn-group {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+
+.choice-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.choice-btn:active { transform: scale(0.95); }
+
+.choice-btn.selected {
+  background: var(--accent-glow);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+
+.toggle-row span { color: var(--text2); font-size: 14px; }
+
+.toggle {
+  width: 46px; height: 26px;
+  background: var(--surface3);
+  border-radius: 13px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  border: 1px solid var(--border2);
+  flex-shrink: 0;
+}
+
+.toggle.on { background: var(--accent); border-color: var(--accent); }
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  width: 20px; height: 20px;
+  background: var(--text2);
+  border-radius: 50%;
+  top: 2px; left: 2px;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.toggle.on::after { transform: translateX(20px); background: #0a0a0f; }
+
+.slider-wrap { padding: 4px 0; }
+
+.range-labels {
+  display: flex; justify-content: space-between;
+  color: var(--text3); font-size: 11px; margin-top: 6px;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%; height: 4px;
+  background: var(--border2);
+  border-radius: 2px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px; height: 22px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.counter-row {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  margin-bottom: 10px;
+}
+
+.counter-row span { color: var(--text2); font-size: 14px; }
+
+.counter-ctrl {
+  display: flex; align-items: center; gap: 14px;
+}
+
+.counter-ctrl button {
+  width: 32px; height: 32px;
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  border-radius: 8px;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+
+.counter-ctrl button:active { background: var(--accent); color: #0a0a0f; border-color: var(--accent); }
+.counter-val { color: var(--text); font-weight: 600; min-width: 20px; text-align: center; }
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 24px 0;
+}
+
+/* Emotion wheel */
+.emotion-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.emotion-btn {
+  padding: 10px 8px;
+  border-radius: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.emotion-btn.selected {
+  background: var(--accent-glow);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Person cards */
+.person-list { display: flex; flex-direction: column; gap: 8px; }
+
+.person-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex; align-items: center; gap: 12px;
+}
+
+.person-name { flex: 1; color: var(--text); font-size: 14px; }
+
+.energy-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid;
+  transition: all 0.15s;
+}
+
+.energy-btn.plus { border-color: var(--success); color: var(--success); background: transparent; }
+.energy-btn.plus.active { background: var(--success); color: #0a0a0f; }
+.energy-btn.minus { border-color: var(--danger); color: var(--danger); background: transparent; }
+.energy-btn.minus.active { background: var(--danger); color: #fff; }
+
+.add-person-row {
+  display: flex; gap: 8px;
+}
+
+.add-person-row input {
+  flex: 1;
+}
+
+.add-btn {
+  padding: 14px 16px;
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  color: var(--text2);
+  font-family: var(--font-body);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.add-btn:active { border-color: var(--accent); color: var(--accent); }
+
+/* Save button */
+.save-btn {
+  width: 100%;
+  background: var(--accent);
+  color: #0a0a0f;
+  border: none;
+  border-radius: var(--radius);
+  padding: 18px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
+}
+
+.save-btn:active { opacity: 0.85; }
+
+/* ── ANALYSIS ── */
+.analysis-tabs {
+  display: flex; gap: 4px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  margin-bottom: 20px;
+}
+
+.analysis-tab {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text3);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.analysis-tab.active {
+  background: var(--surface3);
+  color: var(--text);
+  border: 1px solid var(--border2);
+}
+
+.chart-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 14px;
+}
+
+.chart-card h3 {
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text3);
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.pattern-list { display: flex; flex-direction: column; gap: 10px; }
+
+.pattern-item {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.pattern-item::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px;
+}
+
+.pattern-item.gold::before { background: var(--accent); }
+.pattern-item.blue::before { background: var(--info); }
+.pattern-item.green::before { background: var(--success); }
+.pattern-item.red::before { background: var(--danger); }
+
+.pattern-type {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.pattern-item.gold .pattern-type { color: var(--accent); }
+.pattern-item.blue .pattern-type { color: var(--info); }
+.pattern-item.green .pattern-type { color: var(--success); }
+.pattern-item.red .pattern-type { color: var(--danger); }
+
+.pattern-item p { color: var(--text2); font-size: 14px; line-height: 1.5; }
+
+.no-data {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text3);
+}
+
+.no-data i { font-size: 48px; margin-bottom: 16px; display: block; opacity: 0.4; }
+.no-data p { font-size: 14px; line-height: 1.6; }
+
+/* ── SETTINGS ── */
+.settings-section {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.settings-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.settings-item:last-child { border-bottom: none; }
+.settings-item:active { background: var(--surface3); }
+
+.settings-item-left {
+  display: flex; align-items: center; gap: 12px;
+}
+
+.settings-icon {
+  width: 36px; height: 36px;
+  background: var(--surface3);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent);
+  font-size: 16px;
+}
+
+.settings-item-left h4 { font-size: 14px; font-weight: 500; }
+.settings-item-left p { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+.settings-item i.arrow { color: var(--text3); font-size: 16px; }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  display: none; align-items: flex-end; justify-content: center;
+}
+
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px 24px 0 0;
+  padding: 28px 24px 40px;
+  width: 100%; max-width: 480px;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.modal h3 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  margin-bottom: 20px;
+}
+
+.modal-btn {
+  width: 100%;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 10px;
+}
+
+.modal-btn.primary { background: var(--accent); color: #0a0a0f; border: none; }
+.modal-btn.secondary { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+.modal-btn.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  border-radius: 100px;
+  padding: 12px 24px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+}
+
+.toast.show { opacity: 1; }
+
+/* ── EXPRESS MODE ── */
+.express-area {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-top: 8px;
+}
+
+.express-area textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.7;
+  resize: none;
+  min-height: 200px;
+  outline: none;
+}
+
+.express-area textarea::placeholder { color: var(--text3); }
+
+.word-count {
+  color: var(--text3);
+  font-size: 12px;
+  text-align: right;
+  margin-top: 8px;
+}
+
+/* Meal rows */
+.meal-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+
+.meal-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.meal-card-header span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text2);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page.active { animation: fadeIn 0.25s ease; }
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface2) 25%, var(--surface3) 50%, var(--surface2) 75%);
+  background-size: 200% 100%;
+  animation: skeleton 1.5s infinite;
+  border-radius: 6px;
+}
+
+@keyframes skeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- PIN SCREEN -->
+<div id="pin-screen">
+  <div class="pin-logo">
+    <h1>MirrorMe</h1>
+    <p id="pin-subtitle">Tu espejo interior</p>
+  </div>
+  <div class="pin-dots" id="pin-dots">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+  <div class="pin-grid" id="pin-grid">
+    <button class="pin-btn" onclick="pinPress('1')">1</button>
+    <button class="pin-btn" onclick="pinPress('2')">2</button>
+    <button class="pin-btn" onclick="pinPress('3')">3</button>
+    <button class="pin-btn" onclick="pinPress('4')">4</button>
+    <button class="pin-btn" onclick="pinPress('5')">5</button>
+    <button class="pin-btn" onclick="pinPress('6')">6</button>
+    <button class="pin-btn" onclick="pinPress('7')">7</button>
+    <button class="pin-btn" onclick="pinPress('8')">8</button>
+    <button class="pin-btn" onclick="pinPress('9')">9</button>
+    <button class="pin-btn" style="visibility:hidden"></button>
+    <button class="pin-btn" onclick="pinPress('0')">0</button>
+    <button class="pin-btn delete" onclick="pinDelete()"><i class="lucide-delete"></i></button>
+  </div>
+  <p class="pin-msg" id="pin-msg"></p>
+</div>
+
+<!-- APP -->
+<div id="app">
+
+  <!-- HEADER -->
+  <div class="app-header">
+    <h1>MirrorMe</h1>
+    <div class="header-right">
+      <button class="icon-btn" onclick="openExpressMode()"><i class="lucide-edit-3"></i></button>
+      <button class="icon-btn" onclick="showPage('settings')"><i class="lucide-settings"></i></button>
+    </div>
+  </div>
+
+  <!-- HOME PAGE -->
+  <div class="page active" id="page-home">
+    <div class="home-greeting">
+      <div class="date" id="home-date"></div>
+      <h2 id="home-greeting-text">Buenos dias</h2>
+    </div>
+
+    <div class="streak-card">
+      <div class="streak-info">
+        <h3 id="streak-count">0</h3>
+        <p>dias seguidos</p>
+      </div>
+      <div class="streak-icon"><i class="lucide-flame"></i></div>
+    </div>
+
+    <button class="cta-btn" onclick="showPage('register')">Registrar mi dia</button>
+
+    <div class="section-title">Dato de la semana</div>
+    <div id="weekly-insight-home"></div>
+
+    <div class="section-title">Esta semana</div>
+    <div class="quick-stats" id="quick-stats"></div>
+  </div>
+
+  <!-- REGISTER PAGE -->
+  <div class="page" id="page-register">
+
+    <div class="tab-bar">
+      <button class="tab active" onclick="switchTab('sleep')"><i class="lucide-moon"></i> Sueno</button>
+      <button class="tab" onclick="switchTab('body')"><i class="lucide-heart-pulse"></i> Cuerpo</button>
+      <button class="tab" onclick="switchTab('mind')"><i class="lucide-brain"></i> Mente</button>
+      <button class="tab" onclick="switchTab('social')"><i class="lucide-users"></i> Social</button>
+      <button class="tab" onclick="switchTab('environment')"><i class="lucide-sun"></i> Entorno</button>
+      <button class="tab" onclick="switchTab('release')"><i class="lucide-message-circle"></i> Desahogo</button>
+    </div>
+
+    <!-- SLEEP TAB -->
+    <div class="tab-content active" id="tab-sleep">
+
+      <div class="field-group">
+        <label class="field-label">A que hora te acostaste en la cama?</label>
+        <input type="time" class="time-input" id="f-bed-time">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">A que hora te dormiste? <span>aprox</span></label>
+        <input type="time" class="time-input" id="f-sleep-time">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">A que hora te despertaste?</label>
+        <input type="time" class="time-input" id="f-wake-time">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">A que hora te levantaste de la cama?</label>
+        <input type="time" class="time-input" id="f-rise-time">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Cuantas veces te despertaste en la noche?</label>
+        <div class="counter-row">
+          <span>Interrupciones</span>
+          <div class="counter-ctrl">
+            <button onclick="changeCounter('sleep-interruptions', -1)">-</button>
+            <span class="counter-val" id="val-sleep-interruptions">0</span>
+            <button onclick="changeCounter('sleep-interruptions', 1)">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Como amaneciste?</label>
+        <div class="emotion-grid" id="morning-emotion"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="field-group">
+        <label class="field-label">Recordaste algun sueno?</label>
+        <div class="btn-group">
+          <button class="choice-btn" onclick="select(this,'dream-recall','si')">Si, claramente</button>
+          <button class="choice-btn" onclick="select(this,'dream-recall','vago')">Algo vago</button>
+          <button class="choice-btn" onclick="select(this,'dream-recall','no')">No recuerdo nada</button>
+        </div>
+      </div>
+
+      <div class="field-group" id="dream-detail-field" style="display:none">
+        <label class="field-label">Que sonaste? <span>contalo como quieras</span></label>
+        <textarea class="text-input" id="f-dream-content" placeholder="Describe lo que recuerdes..."></textarea>
+      </div>
+
+      <div class="field-group" id="dream-times-field" style="display:none">
+        <label class="field-label">Cuantas veces recordas ese sueno hoy?</label>
+        <div class="counter-row">
+          <span>Veces que lo recorde</span>
+          <div class="counter-ctrl">
+            <button onclick="changeCounter('dream-recall-count', -1)">-</button>
+            <span class="counter-val" id="val-dream-recall-count">0</span>
+            <button onclick="changeCounter('dream-recall-count', 1)">+</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- BODY TAB -->
+    <div class="tab-content" id="tab-body">
+
+      <div class="section-title" style="margin-top:0">Energia del dia</div>
+
+      <div class="field-group">
+        <label class="field-label">Manana</label>
+        <div class="slider-wrap">
+          <input type="range" min="1" max="10" value="5" id="f-energy-morning" oninput="updateSliderVal(this,'energy-morning-val')">
+          <div class="range-labels"><span>Sin energia</span><span id="energy-morning-val">5</span><span>Con energia</span></div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Tarde</label>
+        <div class="slider-wrap">
+          <input type="range" min="1" max="10" value="5" id="f-energy-afternoon" oninput="updateSliderVal(this,'energy-afternoon-val')">
+          <div class="range-labels"><span>Sin energia</span><span id="energy-afternoon-val">5</span><span>Con energia</span></div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Noche</label>
+        <div class="slider-wrap">
+          <input type="range" min="1" max="10" value="5" id="f-energy-night" oninput="updateSliderVal(this,'energy-night-val')">
+          <div class="range-labels"><span>Sin energia</span><span id="energy-night-val">5</span><span>Con energia</span></div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="section-title" style="margin-top:0">Higiene y movimiento</div>
+
+      <div class="toggle-row">
+        <span>Te duchaste hoy?</span>
+        <div class="toggle" id="tog-shower" onclick="toggleField('shower')"></div>
+      </div>
+
+      <div id="shower-time-field" style="display:none" class="field-group">
+        <label class="field-label">A que hora?</label>
+        <input type="time" class="time-input" id="f-shower-time">
+      </div>
+
+      <div class="toggle-row">
+        <span>Hiciste ejercicio?</span>
+        <div class="toggle" id="tog-exercise" onclick="toggleField('exercise')"></div>
+      </div>
+
+      <div id="exercise-detail-field" style="display:none" class="field-group">
+        <label class="field-label">Que tipo?</label>
+        <div class="btn-group">
+          <button class="choice-btn" onclick="select(this,'exercise-type','caminata')">Caminata</button>
+          <button class="choice-btn" onclick="select(this,'exercise-type','gym')">Gym</button>
+          <button class="choice-btn" onclick="select(this,'exercise-type','running')">Running</button>
+          <button class="choice-btn" onclick="select(this,'exercise-type','yoga')">Yoga</button>
+          <button class="choice-btn" onclick="select(this,'exercise-type','baile')">Baile</button>
+          <button class="choice-btn" onclick="select(this,'exercise-type','otro')">Otro</button>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Cuanto tiempo estuviste sentado? <span>aprox en horas</span></label>
+        <div class="counter-row">
+          <span>Horas sentado</span>
+          <div class="counter-ctrl">
+            <button onclick="changeCounter('sitting-hours', -1)">-</button>
+            <span class="counter-val" id="val-sitting-hours">0</span>
+            <button onclick="changeCounter('sitting-hours', 1)">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="section-title" style="margin-top:0">Consumo</div>
+
+      <div class="counter-row">
+        <span>Vasos de agua</span>
+        <div class="counter-ctrl">
+          <button onclick="changeCounter('water', -1)">-</button>
+          <span class="counter-val" id="val-water">0</span>
+          <button onclick="changeCounter('water', 1)">+</button>
+        </div>
+      </div>
+
+      <div class="counter-row">
+        <span>Cafes o tes</span>
+        <div class="counter-ctrl">
+          <button onclick="changeCounter('coffee', -1)">-</button>
+          <span class="counter-val" id="val-coffee">0</span>
+          <button onclick="changeCounter('coffee', 1)">+</button>
+        </div>
+      </div>
+
+      <div class="counter-row">
+        <span>Bebidas alcoholicas</span>
+        <div class="counter-ctrl">
+          <button onclick="changeCounter('alcohol', -1)">-</button>
+          <span class="counter-val" id="val-alcohol">0</span>
+          <button onclick="changeCounter('alcohol', 1)">+</button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="section-title" style="margin-top:0">Comidas</div>
+
+      <div class="meal-card">
+        <div class="meal-card-header">
+          <span>Desayuno</span>
+          <div class="toggle" id="tog-breakfast" onclick="toggleField('breakfast')"></div>
+        </div>
+        <div id="breakfast-detail" style="display:none">
+          <div class="two-col" style="margin-bottom:8px">
+            <input type="time" class="time-input" id="f-breakfast-time" placeholder="Hora">
+            <input type="text" class="text-input" id="f-breakfast-what" placeholder="Que comiste?">
+          </div>
+          <div class="btn-group">
+            <button class="choice-btn" onclick="select(this,'breakfast-hungry','si')">Tenia hambre</button>
+            <button class="choice-btn" onclick="select(this,'breakfast-hungry','no')">Sin hambre</button>
+            <button class="choice-btn" onclick="select(this,'breakfast-filled','si')">Me lleno</button>
+            <button class="choice-btn" onclick="select(this,'breakfast-filled','no')">No me lleno</button>
+            <button class="choice-btn" onclick="select(this,'breakfast-filled','demas')">Comi de mas</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="meal-card">
+        <div class="meal-card-header">
+          <span>Almuerzo</span>
+          <div class="toggle" id="tog-lunch" onclick="toggleField('lunch')"></div>
+        </div>
+        <div id="lunch-detail" style="display:none">
+          <div class="two-col" style="margin-bottom:8px">
+            <input type="time" class="time-input" id="f-lunch-time" placeholder="Hora">
+            <input type="text" class="text-input" id="f-lunch-what" placeholder="Que comiste?">
+          </div>
+          <div class="btn-group">
+            <button class="choice-btn" onclick="select(this,'lunch-hungry','si')">Tenia hambre</button>
+            <button class="choice-btn" onclick="select(this,'lunch-hungry','no')">Sin hambre</button>
+            <button class="choice-btn" onclick="select(this,'lunch-filled','si')">Me lleno</button>
+            <button class="choice-btn" onclick="select(this,'lunch-filled','no')">No me lleno</button>
+            <button class="choice-btn" onclick="select(this,'lunch-filled','demas')">Comi de mas</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="meal-card">
+        <div class="meal-card-header">
+          <span>Cena</span>
+          <div class="toggle" id="tog-dinner" onclick="toggleField('dinner')"></div>
+        </div>
+        <div id="dinner-detail" style="display:none">
+          <div class="two-col" style="margin-bottom:8px">
+            <input type="time" class="time-input" id="f-dinner-time" placeholder="Hora">
+            <input type="text" class="text-input" id="f-dinner-what" placeholder="Que comiste?">
+          </div>
+          <div class="btn-group">
+            <button class="choice-btn" onclick="select(this,'dinner-hungry','si')">Tenia hambre</button>
+            <button class="choice-btn" onclick="select(this,'dinner-hungry','no')">Sin hambre</button>
+            <button class="choice-btn" onclick="select(this,'dinner-filled','si')">Me lleno</button>
+            <button class="choice-btn" onclick="select(this,'dinner-filled','no')">No me lleno</button>
+            <button class="choice-btn" onclick="select(this,'dinner-filled','demas')">Comi de mas</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group" style="margin-top:12px">
+        <label class="field-label">Comiste algo fuera de esas comidas?</label>
+        <div class="btn-group" style="margin-bottom:8px">
+          <button class="choice-btn" onclick="select(this,'extra-food','si');document.getElementById('extra-food-what').style.display='block'">Si</button>
+          <button class="choice-btn" onclick="select(this,'extra-food','no');document.getElementById('extra-food-what').style.display='none'">No</button>
+        </div>
+        <div id="extra-food-what" style="display:none">
+          <input type="text" class="text-input" id="f-extra-food" placeholder="Que fue?">
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="section-title" style="margin-top:0">Sexualidad</div>
+
+      <div class="toggle-row">
+        <span>Tuviste relaciones?</span>
+        <div class="toggle" id="tog-sex" onclick="toggleField('sex')"></div>
+      </div>
+
+      <div class="toggle-row">
+        <span>Tuviste autoplacer?</span>
+        <div class="toggle" id="tog-self-pleasure" onclick="toggleField('self-pleasure')"></div>
+      </div>
+
+      <div class="field-group" style="margin-top:8px">
+        <label class="field-label">Nivel de deseo hoy</label>
+        <div class="slider-wrap">
+          <input type="range" min="1" max="10" value="5" id="f-desire" oninput="updateSliderVal(this,'desire-val')">
+          <div class="range-labels"><span>Sin deseo</span><span id="desire-val">5</span><span>Alto deseo</span></div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Algun dolor o molestia fisica? <span>opcional</span></label>
+        <input type="text" class="text-input" id="f-pain" placeholder="Donde, como se siente...">
+      </div>
+
+    </div>
+
+    <!-- MIND TAB -->
+    <div class="tab-content" id="tab-mind">
+
+      <div class="field-group">
+        <label class="field-label">Pudiste concentrarte hoy?</label>
+        <div class="btn-group">
+          <button class="choice-btn" onclick="select(this,'focus','si')">Si, bien</button>
+          <button class="choice-btn" onclick="select(this,'focus','mas-o-menos')">Mas o menos</button>
+          <button class="choice-btn" onclick="select(this,'focus','no')">No pude</button>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Que te lo impedia? <span>podes elegir varios</span></label>
+        <div class="btn-group" id="focus-blockers">
+          <button class="choice-btn multi" onclick="multiSelect(this,'focus-blocker')">Pensamientos</button>
+          <button class="choice-btn multi" onclick="multiSelect(this,'focus-blocker')">Ruido</button>
+          <button class="choice-btn multi" onclick="multiSelect(this,'focus-blocker')">Celular</button>
+          <button class="choice-btn multi" onclick="multiSelect(this,'focus-blocker')">Cansancio</button>
+          <button class="choice-btn multi" onclick="multiSelect(this,'focus-blocker')">Preocupaciones</button>
+          <button class="choice-btn multi" onclick="multiSelect(this,'focus-blocker')">Personas</button>
+          <button class="choice-btn multi" onclick="multiSelect(this,'focus-blocker')">Nada me impedia</button>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Que te estreso hoy? <span>si es que algo</span></label>
+        <textarea class="text-input" id="f-stress" placeholder="Contalo sin filtro..."></textarea>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Que no te podias sacar de la cabeza?</label>
+        <textarea class="text-input" id="f-obsessive-thoughts" placeholder="Ese pensamiento que volvía una y otra vez..."></textarea>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">En que pensaste mas hoy?</label>
+        <textarea class="text-input" id="f-main-thoughts" placeholder="Lo que ocupo mas espacio en tu cabeza..."></textarea>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Algo te molesto o enojo?</label>
+        <div class="btn-group" style="margin-bottom:8px">
+          <button class="choice-btn" onclick="select(this,'angry','si');document.getElementById('angry-detail').style.display='block'">Si</button>
+          <button class="choice-btn" onclick="select(this,'angry','no');document.getElementById('angry-detail').style.display='none'">No</button>
+        </div>
+        <div id="angry-detail" style="display:none">
+          <textarea class="text-input" id="f-angry-what" placeholder="Que paso? Por que te molesto?"></textarea>
+          <div class="btn-group" style="margin-top:8px">
+            <button class="choice-btn" onclick="select(this,'angry-resolved','resuelto')">Lo resolvi</button>
+            <button class="choice-btn" onclick="select(this,'angry-resolved','pendiente')">Quedo pendiente</button>
+            <button class="choice-btn" onclick="select(this,'angry-resolved','me-quede-callado')">Me quede callado</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Principales distracciones hoy <span>varios</span></label>
+        <div class="btn-group">
+          <button class="choice-btn multi" onclick="multiSelect(this,'distraction')">Redes sociales</button>
+          <button class="choice-btn multi" onclick="multiSelect(this,'distraction')">Celular en general</button>
+          <button class="choice-btn multi" onclick="multiSelect(this,'distraction')">Ruido externo</button>
+          <button class="choice-btn multi" onclick="multiSelect(this,'distraction')">Mis propios pensamientos</button>
+          <button class="choice-btn multi" onclick="multiSelect(this,'distraction')">Personas</button>
+          <button class="choice-btn multi" onclick="multiSelect(this,'distraction')">Television</button>
+          <button class="choice-btn multi" onclick="multiSelect(this,'distraction')">No me distraj</button>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Procrastinaste algo?</label>
+        <div class="btn-group" style="margin-bottom:8px">
+          <button class="choice-btn" onclick="select(this,'procrastinated','si');document.getElementById('procrastinate-detail').style.display='block'">Si</button>
+          <button class="choice-btn" onclick="select(this,'procrastinated','no');document.getElementById('procrastinate-detail').style.display='none'">No</button>
+        </div>
+        <div id="procrastinate-detail" style="display:none">
+          <input type="text" class="text-input" id="f-procrastinated-what" placeholder="Que evitaste hacer?">
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <span>Creaste algo hoy?</span>
+        <div class="toggle" id="tog-created" onclick="toggleField('created')"></div>
+      </div>
+
+      <div id="created-detail" style="display:none" class="field-group">
+        <label class="field-label">Que fue?</label>
+        <input type="text" class="text-input" id="f-created-what" placeholder="Escribiste, dibujaste, cocinaste...">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Un logro pequeno de hoy <span>aunque parezca minimo</span></label>
+        <input type="text" class="text-input" id="f-achievement" placeholder="Lo que sea que hayas completado o enfrentado...">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Cuanto trabajaste hoy?</label>
+        <div class="counter-row">
+          <span>Horas de trabajo</span>
+          <div class="counter-ctrl">
+            <button onclick="changeCounter('work-hours', -1)">-</button>
+            <span class="counter-val" id="val-work-hours">0</span>
+            <button onclick="changeCounter('work-hours', 1)">+</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SOCIAL TAB -->
+    <div class="tab-content" id="tab-social">
+
+      <div class="field-group">
+        <label class="field-label">Con quien estuviste hoy? <span>podes usar apodos</span></label>
+        <div class="add-person-row">
+          <input type="text" class="text-input" id="new-person-input" placeholder="Nombre o apodo...">
+          <button class="add-btn" onclick="addPerson()">Agregar</button>
+        </div>
+        <div class="person-list" id="person-list" style="margin-top:12px"></div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Tuviste algun conflicto hoy?</label>
+        <div class="btn-group" style="margin-bottom:8px">
+          <button class="choice-btn" onclick="select(this,'conflict','si');document.getElementById('conflict-detail').style.display='block'">Si</button>
+          <button class="choice-btn" onclick="select(this,'conflict','no');document.getElementById('conflict-detail').style.display='none'">No</button>
+        </div>
+        <div id="conflict-detail" style="display:none">
+          <textarea class="text-input" id="f-conflict-what" placeholder="Que paso?"></textarea>
+          <div class="btn-group" style="margin-top:8px">
+            <button class="choice-btn" onclick="select(this,'conflict-resolved','resuelto')">Se resolvio</button>
+            <button class="choice-btn" onclick="select(this,'conflict-resolved','pendiente')">Quedo en el aire</button>
+            <button class="choice-btn" onclick="select(this,'conflict-resolved','empeoro')">Empeoro</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Alguien te dijo algo que te quedo dando vueltas?</label>
+        <div class="btn-group" style="margin-bottom:8px">
+          <button class="choice-btn" onclick="select(this,'lingering-words','si');document.getElementById('lingering-detail').style.display='block'">Si</button>
+          <button class="choice-btn" onclick="select(this,'lingering-words','no');document.getElementById('lingering-detail').style.display='none'">No</button>
+        </div>
+        <div id="lingering-detail" style="display:none">
+          <textarea class="text-input" id="f-lingering-what" placeholder="Que te dijeron? Como te hizo sentir?"></textarea>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Tuviste ganas de hablar con alguien y no lo hiciste?</label>
+        <div class="btn-group">
+          <button class="choice-btn" onclick="select(this,'wanted-talk','si')">Si</button>
+          <button class="choice-btn" onclick="select(this,'wanted-talk','no')">No</button>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Como te sentiste con el tiempo que pasaste con otros?</label>
+        <div class="btn-group">
+          <button class="choice-btn" onclick="select(this,'social-feel','queria-mas')">Queria mas compania</button>
+          <button class="choice-btn" onclick="select(this,'social-feel','bien')">Estuvo bien</button>
+          <button class="choice-btn" onclick="select(this,'social-feel','queria-solo')">Queria mas soledad</button>
+          <button class="choice-btn" onclick="select(this,'social-feel','solo')">Estuve solo todo el dia</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ENVIRONMENT TAB -->
+    <div class="tab-content" id="tab-environment">
+
+      <div class="field-group">
+        <label class="field-label">Como estuvo el clima hoy?</label>
+        <div class="btn-group">
+          <button class="choice-btn" onclick="select(this,'weather','soleado')">Soleado</button>
+          <button class="choice-btn" onclick="select(this,'weather','nublado')">Nublado</button>
+          <button class="choice-btn" onclick="select(this,'weather','lluvia')">Lluvia</button>
+          <button class="choice-btn" onclick="select(this,'weather','frio')">Frio</button>
+          <button class="choice-btn" onclick="select(this,'weather','calor')">Calor</button>
+          <button class="choice-btn" onclick="select(this,'weather','tormenta')">Tormenta</button>
+          <button class="choice-btn" onclick="select(this,'weather','gris')">Gris y pesado</button>
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <span>Saliste de casa hoy?</span>
+        <div class="toggle" id="tog-went-out" onclick="toggleField('went-out')"></div>
+      </div>
+
+      <div id="went-out-detail" style="display:none" class="field-group">
+        <label class="field-label">Cuanto tiempo afuera? <span>aprox en horas</span></label>
+        <div class="counter-row">
+          <span>Horas fuera de casa</span>
+          <div class="counter-ctrl">
+            <button onclick="changeCounter('outside-hours', -1)">-</button>
+            <span class="counter-val" id="val-outside-hours">0</span>
+            <button onclick="changeCounter('outside-hours', 1)">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Tu espacio estaba...</label>
+        <div class="btn-group">
+          <button class="choice-btn" onclick="select(this,'space-order','ordenado')">Ordenado</button>
+          <button class="choice-btn" onclick="select(this,'space-order','mas-o-menos')">Mas o menos</button>
+          <button class="choice-btn" onclick="select(this,'space-order','caos')">En caos</button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="section-title" style="margin-top:0">Entretenimiento</div>
+
+      <div class="toggle-row">
+        <span>Viste alguna serie o pelicula?</span>
+        <div class="toggle" id="tog-media" onclick="toggleField('media')"></div>
+      </div>
+
+      <div id="media-detail" style="display:none">
+        <div class="field-group">
+          <label class="field-label">Que viste?</label>
+          <input type="text" class="text-input" id="f-media-title" placeholder="Titulo...">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Genero</label>
+          <div class="btn-group">
+            <button class="choice-btn" onclick="select(this,'media-genre','drama')">Drama</button>
+            <button class="choice-btn" onclick="select(this,'media-genre','comedia')">Comedia</button>
+            <button class="choice-btn" onclick="select(this,'media-genre','accion')">Accion</button>
+            <button class="choice-btn" onclick="select(this,'media-genre','terror')">Terror</button>
+            <button class="choice-btn" onclick="select(this,'media-genre','sci-fi')">Sci-Fi</button>
+            <button class="choice-btn" onclick="select(this,'media-genre','documental')">Documental</button>
+            <button class="choice-btn" onclick="select(this,'media-genre','romance')">Romance</button>
+            <button class="choice-btn" onclick="select(this,'media-genre','otro')">Otro</button>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">De que trata? <span>breve</span></label>
+          <textarea class="text-input" id="f-media-about" placeholder="El tema o la historia principal..."></textarea>
+        </div>
+      </div>
+
+      <div class="field-group" style="margin-top:8px">
+        <label class="field-label">Que te hizo sentir bien hoy?</label>
+        <textarea class="text-input" id="f-felt-good" placeholder="Cualquier cosa, grande o minima..."></textarea>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Que te hizo sentir mal hoy?</label>
+        <textarea class="text-input" id="f-felt-bad" placeholder="Sin juzgarte..."></textarea>
+      </div>
+
+    </div>
+
+    <!-- RELEASE TAB -->
+    <div class="tab-content" id="tab-release">
+
+      <div class="field-group">
+        <label class="field-label">Como fue tu dia en general?</label>
+        <div class="slider-wrap">
+          <input type="range" min="1" max="10" value="5" id="f-day-mood" oninput="updateSliderVal(this,'day-mood-val')">
+          <div class="range-labels"><span>Muy malo</span><span id="day-mood-val">5</span><span>Excelente</span></div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Que emociones sentiste hoy? <span>hasta 3</span></label>
+        <div class="emotion-grid" id="day-emotions"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="field-group">
+        <label class="field-label">Como cerras este dia?</label>
+        <div class="btn-group">
+          <button class="choice-btn" onclick="select(this,'day-close','paz')">Con paz</button>
+          <button class="choice-btn" onclick="select(this,'day-close','energia')">Con energia</button>
+          <button class="choice-btn" onclick="select(this,'day-close','preocupacion')">Con preocupacion</button>
+          <button class="choice-btn" onclick="select(this,'day-close','tristeza')">Con tristeza</button>
+          <button class="choice-btn" onclick="select(this,'day-close','que-termine')">Con ganas de que termine</button>
+          <button class="choice-btn" onclick="select(this,'day-close','indiferente')">Indiferente</button>
+          <button class="choice-btn" onclick="select(this,'day-close','gratitud')">Con gratitud</button>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Contame como fue tu dia <span>sin filtros, todo lo que quieras</span></label>
+        <div class="express-area">
+          <textarea id="f-release-text" placeholder="Este es tu espacio. Nada de lo que escribas esta mal..." oninput="updateWordCount(this,'release-wc')"></textarea>
+          <div class="word-count"><span id="release-wc">0</span> palabras</div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Una intencion para manana <span>una sola cosa</span></label>
+        <input type="text" class="text-input" id="f-intention" placeholder="Lo que queres hacer o sentir manana...">
+      </div>
+
+      <button class="save-btn" onclick="saveEntry()">Guardar mi dia</button>
+
+    </div>
+
+  </div>
+
+  <!-- ANALYSIS PAGE -->
+  <div class="page" id="page-analysis">
+    <div class="analysis-tabs">
+      <button class="analysis-tab active" onclick="switchAnalysis('daily')">Hoy</button>
+      <button class="analysis-tab" onclick="switchAnalysis('weekly')">Semana</button>
+      <button class="analysis-tab" onclick="switchAnalysis('monthly')">Mes</button>
+    </div>
+    <div id="analysis-content"></div>
+  </div>
+
+  <!-- SETTINGS PAGE -->
+  <div class="page" id="page-settings">
+    <div style="padding: 8px 0 24px">
+      <div class="date" style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Configuracion</div>
+      <h2 style="font-family:var(--font-display);font-size:28px">Ajustes</h2>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-item" onclick="openChangePinModal()">
+        <div class="settings-item-left">
+          <div class="settings-icon"><i class="lucide-lock"></i></div>
+          <div>
+            <h4>Cambiar PIN</h4>
+            <p>Modifica tu PIN de acceso</p>
+          </div>
+        </div>
+        <i class="lucide-chevron-right arrow"></i>
+      </div>
+      <div class="settings-item" onclick="exportData()">
+        <div class="settings-item-left">
+          <div class="settings-icon"><i class="lucide-download"></i></div>
+          <div>
+            <h4>Exportar datos</h4>
+            <p>Descarga un backup en JSON</p>
+          </div>
+        </div>
+        <i class="lucide-chevron-right arrow"></i>
+      </div>
+      <div class="settings-item" onclick="document.getElementById('import-input').click()">
+        <div class="settings-item-left">
+          <div class="settings-icon"><i class="lucide-upload"></i></div>
+          <div>
+            <h4>Importar datos</h4>
+            <p>Restaura desde un backup</p>
+          </div>
+        </div>
+        <i class="lucide-chevron-right arrow"></i>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-item" onclick="openClearModal()">
+        <div class="settings-item-left">
+          <div class="settings-icon" style="color:var(--danger)"><i class="lucide-trash-2"></i></div>
+          <div>
+            <h4 style="color:var(--danger)">Borrar todos los datos</h4>
+            <p>Esta accion no se puede deshacer</p>
+          </div>
+        </div>
+        <i class="lucide-chevron-right arrow"></i>
+      </div>
+    </div>
+
+    <div style="text-align:center;padding:32px 0;color:var(--text3);font-size:12px">
+      <p style="font-family:var(--font-display);font-size:18px;color:var(--text2);margin-bottom:4px">MirrorMe</p>
+      <p>Todos tus datos son privados y viven en este dispositivo</p>
+    </div>
+
+    <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(event)">
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="showPage('home')" id="nav-home">
+      <i class="lucide-home"></i>
+      <span>Inicio</span>
+    </div>
+    <div class="nav-item" onclick="showPage('register')" id="nav-register">
+      <i class="lucide-plus-circle"></i>
+      <span>Registro</span>
+    </div>
+    <div class="nav-item" onclick="showPage('analysis')" id="nav-analysis">
+      <i class="lucide-bar-chart-2"></i>
+      <span>Analisis</span>
+    </div>
+    <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
+      <i class="lucide-settings"></i>
+      <span>Ajustes</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- EXPRESS MODE MODAL -->
+<div class="modal-overlay" id="express-modal">
+  <div class="modal">
+    <h3>Desahogo rapido</h3>
+    <p style="color:var(--text3);font-size:13px;margin-bottom:16px">Solo escribe, sin formulario. Queda guardado igual.</p>
+    <div class="express-area">
+      <textarea id="express-text" placeholder="Escribi lo que sea..." oninput="updateWordCount(this,'express-wc')"></textarea>
+      <div class="word-count"><span id="express-wc">0</span> palabras</div>
+    </div>
+    <button class="modal-btn primary" style="margin-top:16px" onclick="saveExpressNote()">Guardar nota</button>
+    <button class="modal-btn secondary" onclick="closeModal('express-modal')">Cancelar</button>
+  </div>
+</div>
+
+<!-- CHANGE PIN MODAL -->
+<div class="modal-overlay" id="change-pin-modal">
+  <div class="modal">
+    <h3>Cambiar PIN</h3>
+    <div class="field-group">
+      <label class="field-label">PIN actual</label>
+      <input type="password" class="text-input" id="current-pin-input" maxlength="4" placeholder="****" inputmode="numeric">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Nuevo PIN</label>
+      <input type="password" class="text-input" id="new-pin-input" maxlength="4" placeholder="****" inputmode="numeric">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Confirmar nuevo PIN</label>
+      <input type="password" class="text-input" id="confirm-pin-input" maxlength="4" placeholder="****" inputmode="numeric">
+    </div>
+    <p class="pin-msg" id="change-pin-msg"></p>
+    <button class="modal-btn primary" onclick="changePinConfirm()">Cambiar PIN</button>
+    <button class="modal-btn secondary" onclick="closeModal('change-pin-modal')">Cancelar</button>
+  </div>
+</div>
+
+<!-- CLEAR DATA MODAL -->
+<div class="modal-overlay" id="clear-modal">
+  <div class="modal">
+    <h3>Borrar todos los datos</h3>
+    <p style="color:var(--text2);font-size:14px;margin-bottom:24px;line-height:1.6">Esta accion borrara todos tus registros y analisis permanentemente. No se puede deshacer.</p>
+    <button class="modal-btn danger" onclick="clearAllData()">Si, borrar todo</button>
+    <button class="modal-btn secondary" onclick="closeModal('clear-modal')">Cancelar</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// DATA LAYER
+// ═══════════════════════════════════════════════════
+
+const DB = {
+  get: (key) => { try { return JSON.parse(localStorage.getItem('mm_' + key)); } catch(e) { return null; } },
+  set: (key, val) => localStorage.setItem('mm_' + key, JSON.stringify(val)),
+  del: (key) => localStorage.removeItem('mm_' + key),
+  getEntries: () => DB.get('entries') || [],
+  saveEntry: (entry) => {
+    const entries = DB.getEntries();
+    const idx = entries.findIndex(e => e.date === entry.date);
+    if (idx >= 0) entries[idx] = entry;
+    else entries.push(entry);
+    DB.set('entries', entries);
+  },
+  getExpressNotes: () => DB.get('express_notes') || [],
+  saveExpressNote: (note) => {
+    const notes = DB.getExpressNotes();
+    notes.push(note);
+    DB.set('express_notes', notes);
+  }
+};
+
+// ═══════════════════════════════════════════════════
+// PIN SYSTEM
+// ═══════════════════════════════════════════════════
+
+let pinBuffer = '';
+let pinAttempts = 0;
+let isSettingPin = false;
+let newPinBuffer = '';
+
+function hashPin(pin) {
+  let h = 0;
+  for (let i = 0; i < pin.length; i++) { h = Math.imul(31, h) + pin.charCodeAt(i) | 0; }
+  return h.toString(36);
+}
+
+function initPin() {
+  const stored = DB.get('pin');
+  if (!stored) {
+    isSettingPin = true;
+    document.getElementById('pin-subtitle').textContent = 'Crea tu PIN de 4 digitos';
+  }
+}
+
+function pinPress(digit) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += digit;
+  updatePinDots(pinBuffer.length, false);
+  if (pinBuffer.length === 4) {
+    setTimeout(() => processPinInput(), 150);
+  }
+}
+
+function pinDelete() {
+  if (pinBuffer.length > 0) {
+    pinBuffer = pinBuffer.slice(0, -1);
+    updatePinDots(pinBuffer.length, false);
+  }
+}
+
+function updatePinDots(count, error) {
+  for (let i = 0; i < 4; i++) {
+    const d = document.getElementById('d' + i);
+    d.className = 'pin-dot';
+    if (i < count) d.classList.add(error ? 'error' : 'filled');
+  }
+}
+
+function processPinInput() {
+  const stored = DB.get('pin');
+
+  if (!stored) {
+    if (!newPinBuffer) {
+      newPinBuffer = pinBuffer;
+      pinBuffer = '';
+      updatePinDots(0, false);
+      document.getElementById('pin-subtitle').textContent = 'Confirma tu PIN';
+      document.getElementById('pin-msg').textContent = '';
+      return;
+    } else {
+      if (newPinBuffer === pinBuffer) {
+        DB.set('pin', hashPin(pinBuffer));
+        unlockApp();
+      } else {
+        document.getElementById('pin-msg').textContent = 'Los PINs no coinciden. Intentalo de nuevo.';
+        document.getElementById('pin-msg').className = 'pin-msg error';
+        newPinBuffer = '';
+        pinBuffer = '';
+        updatePinDots(0, true);
+        document.getElementById('pin-subtitle').textContent = 'Crea tu PIN de 4 digitos';
+        setTimeout(() => { updatePinDots(0, false); document.getElementById('pin-msg').textContent = ''; }, 1200);
+      }
+    }
+  } else {
+    if (hashPin(pinBuffer) === stored) {
+      pinAttempts = 0;
+      unlockApp();
+    } else {
+      pinAttempts++;
+      pinBuffer = '';
+      updatePinDots(4, true);
+      const msg = pinAttempts >= 3 ? 'Demasiados intentos. Espera un momento.' : 'PIN incorrecto';
+      document.getElementById('pin-msg').textContent = msg;
+      document.getElementById('pin-msg').className = 'pin-msg error';
+      if (pinAttempts >= 3) {
+        disablePinTemp();
+      } else {
+        setTimeout(() => { updatePinDots(0, false); document.getElementById('pin-msg').textContent = ''; }, 1200);
+      }
+    }
+  }
+}
+
+function disablePinTemp() {
+  const btns = document.querySelectorAll('.pin-btn');
+  btns.forEach(b => b.disabled = true);
+  let t = 15;
+  const interval = setInterval(() => {
+    document.getElementById('pin-msg').textContent = `Espera ${t} segundos...`;
+    t--;
+    if (t < 0) {
+      clearInterval(interval);
+      btns.forEach(b => b.disabled = false);
+      pinBuffer = '';
+      pinAttempts = 0;
+      updatePinDots(0, false);
+      document.getElementById('pin-msg').textContent = '';
+    }
+  }, 1000);
+}
+
+function unlockApp() {
+  document.getElementById('pin-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  initApp();
+}
+
+// ═══════════════════════════════════════════════════
+// APP INIT
+// ═══════════════════════════════════════════════════
+
+const EMOTIONS = ['Alegria','Calma','Ansiedad','Tristeza','Irritacion','Euforia','Vacio','Gratitud','Confusion','Nostalgia','Esperanza','Miedo','Orgullo','Verguenza','Amor','Soledad','Entusiasmo','Agotamiento'];
+
+function initApp() {
+  buildEmotionGrid('morning-emotion', 1, 'morning-emotion-sel');
+  buildEmotionGrid('day-emotions', 3, 'day-emotion-sel');
+  updateHomeScreen();
+  updateAnalysis('daily');
+  setHomeDate();
+  checkYesterdayIntention();
+}
+
+function setHomeDate() {
+  const now = new Date();
+  const days = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
+  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  document.getElementById('home-date').textContent = `${days[now.getDay()]}, ${now.getDate()} de ${months[now.getMonth()]}`;
+
+  const hour = now.getHours();
+  let greeting = 'Buenas noches';
+  if (hour >= 5 && hour < 12) greeting = 'Buenos dias';
+  else if (hour >= 12 && hour < 20) greeting = 'Buenas tardes';
+  document.getElementById('home-greeting-text').textContent = greeting;
+}
+
+function buildEmotionGrid(containerId, maxSel, stateKey) {
+  const grid = document.getElementById(containerId);
+  if (!grid) return;
+  grid.innerHTML = '';
+  window[stateKey] = [];
+  EMOTIONS.forEach(em => {
+    const btn = document.createElement('button');
+    btn.className = 'emotion-btn';
+    btn.textContent = em;
+    btn.onclick = () => {
+      const sel = window[stateKey];
+      if (btn.classList.contains('selected')) {
+        btn.classList.remove('selected');
+        window[stateKey] = sel.filter(e => e !== em);
+      } else {
+        if (sel.length < maxSel) {
+          btn.classList.add('selected');
+          window[stateKey].push(em);
+        }
+      }
+    };
+    grid.appendChild(btn);
+  });
+}
+
+function checkYesterdayIntention() {
+  const yesterday = getDateStr(-1);
+  const entries = DB.getEntries();
+  const yEntry = entries.find(e => e.date === yesterday);
+  if (yEntry && yEntry.intention) {
+    const homeInsight = document.getElementById('weekly-insight-home');
+    homeInsight.innerHTML = `<div class="insight-card">
+      <div class="insight-label">Tu intencion de ayer</div>
+      <p>"${yEntry.intention}"</p>
+    </div>`;
+  }
+}
+
+function updateHomeScreen() {
+  const entries = DB.getEntries();
+  const today = getDateStr(0);
+
+  // Streak
+  let streak = 0;
+  let checkDate = new Date();
+  while (true) {
+    const ds = getDateStrFrom(checkDate);
+    if (entries.find(e => e.date === ds)) {
+      streak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else break;
+  }
+  document.getElementById('streak-count').textContent = streak;
+
+  // Quick stats
+  const last7 = entries.filter(e => {
+    const d = new Date(e.date);
+    const now = new Date();
+    return (now - d) / 86400000 <= 7;
+  });
+
+  const avgMood = last7.length ? (last7.reduce((a,b) => a + (b.day_mood || 5), 0) / last7.length).toFixed(1) : '--';
+  const avgSleep = last7.filter(e => e.sleep_hours).length
+    ? (last7.filter(e => e.sleep_hours).reduce((a,b) => a + b.sleep_hours, 0) / last7.filter(e => e.sleep_hours).length).toFixed(1)
+    : '--';
+
+  document.getElementById('quick-stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-val">${avgMood}</div>
+      <div class="stat-label">Humor promedio</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val">${avgSleep}h</div>
+      <div class="stat-label">Sueno promedio</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val">${last7.length}</div>
+      <div class="stat-label">Dias registrados</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val">${entries.length}</div>
+      <div class="stat-label">Total de dias</div>
+    </div>
+  `;
+
+  // Weekly insight
+  generateWeeklyInsight(entries);
+}
+
+// ═══════════════════════════════════════════════════
+// PATTERN ENGINE
+// ═══════════════════════════════════════════════════
+
+function generateWeeklyInsight(entries) {
+  if (entries.length < 3) {
+    document.getElementById('weekly-insight-home').innerHTML = `<div class="insight-card"><div class="insight-label">Patron semanal</div><p>Necesito al menos 3 registros para encontrar patrones. Sigue registrando.</p></div>`;
+    return;
+  }
+
+  const patterns = findPatterns(entries);
+  if (!patterns.length) return;
+
+  const best = patterns[Math.floor(Math.random() * Math.min(3, patterns.length))];
+  document.getElementById('weekly-insight-home').innerHTML = `
+    <div class="insight-card">
+      <div class="insight-label">Patron detectado</div>
+      <p>${best}</p>
+    </div>
+  `;
+}
+
+function findPatterns(entries) {
+  const patterns = [];
+  const valid = entries.filter(e => e.day_mood);
+
+  if (valid.length < 3) return patterns;
+
+  // Sleep vs mood
+  const sleepMood = valid.filter(e => e.sleep_hours);
+  if (sleepMood.length >= 3) {
+    const highSleep = sleepMood.filter(e => e.sleep_hours >= 7);
+    const lowSleep = sleepMood.filter(e => e.sleep_hours < 7);
+    if (highSleep.length >= 2 && lowSleep.length >= 1) {
+      const avgHigh = avg(highSleep.map(e => e.day_mood));
+      const avgLow = avg(lowSleep.map(e => e.day_mood));
+      const diff = Math.abs(avgHigh - avgLow).toFixed(1);
+      if (diff > 0.8) {
+        if (avgHigh > avgLow) patterns.push(`Cuando dormi 7 horas o mas, tu humor fue ${diff} puntos mas alto que cuando dormiste menos.`);
+        else patterns.push(`Tu humor no mejora con mas sueno — de hecho, con menos horas tu humor promedio fue mas alto. Curioso.`);
+      }
+    }
+  }
+
+  // Shower vs mood
+  const showerDays = valid.filter(e => e.shower === true);
+  const noShowerDays = valid.filter(e => e.shower === false);
+  if (showerDays.length >= 2 && noShowerDays.length >= 1) {
+    const avgShower = avg(showerDays.map(e => e.day_mood));
+    const avgNoShower = avg(noShowerDays.map(e => e.day_mood));
+    const diff = Math.abs(avgShower - avgNoShower).toFixed(1);
+    if (diff > 0.7) {
+      if (avgShower > avgNoShower) patterns.push(`Los dias que te duchaste, tu humor promedio fue ${diff} puntos mas alto. La ducha tiene mas impacto del que creias.`);
+      else patterns.push(`Curiosamente, los dias que no te duchaste tu humor promedio fue mayor. El cuerpo tiene su logica propia.`);
+    }
+  }
+
+  // Exercise vs mood
+  const exDays = valid.filter(e => e.exercise === true);
+  const noExDays = valid.filter(e => e.exercise === false);
+  if (exDays.length >= 2 && noExDays.length >= 2) {
+    const avgEx = avg(exDays.map(e => e.day_mood));
+    const avgNoEx = avg(noExDays.map(e => e.day_mood));
+    const diff = Math.abs(avgEx - avgNoEx).toFixed(1);
+    if (diff > 0.5) {
+      if (avgEx > avgNoEx) patterns.push(`Cuando hiciste ejercicio, tu humor fue ${diff} puntos mas alto en promedio.`);
+    }
+  }
+
+  // Weather vs mood
+  const weathers = ['soleado','nublado','lluvia','frio','calor','tormenta','gris'];
+  weathers.forEach(w => {
+    const wDays = valid.filter(e => e.weather === w);
+    if (wDays.length >= 2) {
+      const avgW = avg(wDays.map(e => e.day_mood));
+      const otherDays = valid.filter(e => e.weather && e.weather !== w);
+      if (otherDays.length >= 2) {
+        const avgOther = avg(otherDays.map(e => e.day_mood));
+        const diff = (avgW - avgOther).toFixed(1);
+        if (Math.abs(diff) > 1) {
+          if (diff > 0) patterns.push(`Con clima ${w} tu humor fue notablemente mejor (${diff} puntos mas alto que con otro clima).`);
+          else patterns.push(`Con clima ${w} tu humor tiende a bajar ${Math.abs(diff)} puntos comparado con otros dias.`);
+        }
+      }
+    }
+  });
+
+  // Coffee vs sleep quality
+  const coffeeSleep = entries.filter(e => e.coffee !== undefined && e.dream_recall);
+  if (coffeeSleep.length >= 3) {
+    const highCoffee = coffeeSleep.filter(e => e.coffee >= 3);
+    const lowCoffee = coffeeSleep.filter(e => e.coffee < 3);
+    if (highCoffee.length >= 2 && lowCoffee.length >= 2) {
+      const highRecall = highCoffee.filter(e => e.dream_recall === 'si').length / highCoffee.length;
+      const lowRecall = lowCoffee.filter(e => e.dream_recall === 'si').length / lowCoffee.length;
+      if (highRecall < lowRecall - 0.2) {
+        patterns.push(`Los dias que tomaste 3 o mas cafes, recordaste tus suenos con menos frecuencia. La cafeina parece afectar tu memoria onírica.`);
+      }
+    }
+  }
+
+  // Day of week patterns
+  const byDay = {};
+  valid.forEach(e => {
+    const day = new Date(e.date).getDay();
+    if (!byDay[day]) byDay[day] = [];
+    byDay[day].push(e.day_mood);
+  });
+  const dayNames = ['los domingos','los lunes','los martes','los miercoles','los jueves','los viernes','los sabados'];
+  let bestDay = -1, bestAvg = 0, worstDay = -1, worstAvg = 11;
+  Object.entries(byDay).forEach(([d, moods]) => {
+    if (moods.length >= 2) {
+      const a = avg(moods);
+      if (a > bestAvg) { bestAvg = a; bestDay = d; }
+      if (a < worstAvg) { worstAvg = a; worstDay = d; }
+    }
+  });
+  if (bestDay >= 0 && worstDay >= 0 && bestDay !== worstDay) {
+    patterns.push(`Tu mejor dia de la semana estadisticamente son ${dayNames[bestDay]} (humor promedio ${bestAvg.toFixed(1)}). Tu dia mas bajo: ${dayNames[worstDay]} (${worstAvg.toFixed(1)}).`);
+  }
+
+  // Alcohol vs next day
+  const alcoholEffect = entries.filter(e => e.alcohol >= 2);
+  if (alcoholEffect.length >= 2) {
+    const nextDays = alcoholEffect.map(e => {
+      const nextDate = getNextDateStr(e.date);
+      return entries.find(en => en.date === nextDate);
+    }).filter(Boolean);
+    if (nextDays.length >= 2) {
+      const avgNext = avg(nextDays.map(e => e.day_mood));
+      const globalAvg = avg(valid.map(e => e.day_mood));
+      const diff = (globalAvg - avgNext).toFixed(1);
+      if (diff > 0.8) patterns.push(`El dia despues de tomar 2 o mas bebidas alcoholicas, tu humor baja ${diff} puntos respecto a tu promedio.`);
+    }
+  }
+
+  // Sitting hours vs productivity/focus
+  const sittingFocus = entries.filter(e => e.sitting_hours && e.focus);
+  if (sittingFocus.length >= 3) {
+    const highSitting = sittingFocus.filter(e => e.sitting_hours >= 8 && e.focus === 'no');
+    if (highSitting.length >= 2) {
+      patterns.push(`Los dias que estuviste 8+ horas sentado, tu concentracion fue mala en el ${Math.round(highSleep.length/sittingFocus.length*100)}% de esos dias.`);
+    }
+  }
+
+  // Dream recall vs mood
+  const dreamMood = valid.filter(e => e.dream_recall);
+  if (dreamMood.length >= 4) {
+    const withDream = dreamMood.filter(e => e.dream_recall === 'si');
+    const withoutDream = dreamMood.filter(e => e.dream_recall === 'no');
+    if (withDream.length >= 2 && withoutDream.length >= 2) {
+      const avgWith = avg(withDream.map(e => e.day_mood));
+      const avgWithout = avg(withoutDream.map(e => e.day_mood));
+      const diff = (avgWith - avgWithout).toFixed(1);
+      if (Math.abs(diff) > 0.8) {
+        if (diff > 0) patterns.push(`Los dias que recordaste tus suenos, tu humor fue ${diff} puntos mas alto que los dias que no recordaste nada.`);
+        else patterns.push(`Curioso: los dias que no recordaste ningun sueno, tu humor tendio a ser mejor.`);
+      }
+    }
+  }
+
+  // Space order vs mood
+  const spaceMood = valid.filter(e => e.space_order);
+  if (spaceMood.length >= 3) {
+    const ordered = spaceMood.filter(e => e.space_order === 'ordenado');
+    const chaotic = spaceMood.filter(e => e.space_order === 'caos');
+    if (ordered.length >= 2 && chaotic.length >= 1) {
+      const avgOrd = avg(ordered.map(e => e.day_mood));
+      const avgCha = avg(chaotic.map(e => e.day_mood));
+      const diff = Math.abs(avgOrd - avgCha).toFixed(1);
+      if (diff > 0.8) {
+        if (avgOrd > avgCha) patterns.push(`Con tu espacio ordenado, tu humor fue ${diff} puntos mas alto que cuando estaba en caos.`);
+        else patterns.push(`Cuando tu espacio estaba en caos, te sentia mejor. Quizas el orden no es lo tuyo.`);
+      }
+    }
+  }
+
+  // Closing emotion
+  const closingMood = valid.filter(e => e.day_close);
+  if (closingMood.length >= 5) {
+    const closingCounts = {};
+    closingMood.forEach(e => {
+      closingCounts[e.day_close] = (closingCounts[e.day_close] || 0) + 1;
+    });
+    const mostCommon = Object.entries(closingCounts).sort((a,b) => b[1]-a[1])[0];
+    const pct = Math.round(mostCommon[1] / closingMood.length * 100);
+    if (pct >= 40) {
+      patterns.push(`El ${pct}% de tus dias los cerras "${mostCommon[0]}". Es el estado con el que mas frecuentemente terminas el dia.`);
+    }
+  }
+
+  // Media genre vs mood
+  const mediaMood = valid.filter(e => e.media_genre);
+  if (mediaMood.length >= 3) {
+    const byGenre = {};
+    mediaMood.forEach(e => {
+      if (!byGenre[e.media_genre]) byGenre[e.media_genre] = [];
+      byGenre[e.media_genre].push(e.day_mood);
+    });
+    const genreEntries = Object.entries(byGenre).filter(([g, moods]) => moods.length >= 2);
+    if (genreEntries.length >= 2) {
+      const sorted = genreEntries.sort((a,b) => avg(b[1]) - avg(a[1]));
+      if (sorted[0] && sorted[sorted.length-1]) {
+        patterns.push(`Los dias que ves ${sorted[0][0]}, tu humor promedio es ${avg(sorted[0][1]).toFixed(1)}. Los que ves ${sorted[sorted.length-1][0]}: ${avg(sorted[sorted.length-1][1]).toFixed(1)}. Interesante diferencia.`);
+      }
+    }
+  }
+
+  return patterns;
+}
+
+function avg(arr) {
+  if (!arr.length) return 0;
+  return arr.reduce((a,b) => a + b, 0) / arr.length;
+}
+
+// ═══════════════════════════════════════════════════
+// FORM STATE
+// ═══════════════════════════════════════════════════
+
+const formState = {};
+const counters = {};
+
+function select(btn, key, val) {
+  const parent = btn.closest('.btn-group, .field-group');
+  if (parent) {
+    parent.querySelectorAll('.choice-btn:not(.multi)').forEach(b => b.classList.remove('selected'));
+  }
+  btn.classList.toggle('selected');
+  if (btn.classList.contains('selected')) formState[key] = val;
+  else delete formState[key];
+
+  // Dream recall toggle
+  if (key === 'dream-recall') {
+    document.getElementById('dream-detail-field').style.display = val !== 'no' ? 'block' : 'none';
+    document.getElementById('dream-times-field').style.display = val !== 'no' ? 'block' : 'none';
+  }
+}
+
+function multiSelect(btn, key) {
+  btn.classList.toggle('selected');
+  if (!formState[key]) formState[key] = [];
+  const val = btn.textContent.trim();
+  if (btn.classList.contains('selected')) {
+    if (!formState[key].includes(val)) formState[key].push(val);
+  } else {
+    formState[key] = formState[key].filter(v => v !== val);
+  }
+}
+
+function changeCounter(key, delta) {
+  if (!counters[key]) counters[key] = 0;
+  counters[key] = Math.max(0, counters[key] + delta);
+  const el = document.getElementById('val-' + key);
+  if (el) el.textContent = counters[key];
+  formState[key] = counters[key];
+}
+
+function updateSliderVal(input, valId) {
+  document.getElementById(valId).textContent = input.value;
+}
+
+function toggleField(key) {
+  const tog = document.getElementById('tog-' + key);
+  const isOn = tog.classList.toggle('on');
+  formState[key] = isOn;
+
+  const detailMap = {
+    'shower': 'shower-time-field',
+    'exercise': 'exercise-detail-field',
+    'breakfast': 'breakfast-detail',
+    'lunch': 'lunch-detail',
+    'dinner': 'dinner-detail',
+    'went-out': 'went-out-detail',
+    'media': 'media-detail',
+    'created': 'created-detail',
+    'sex': null,
+    'self-pleasure': null
+  };
+
+  const detailId = detailMap[key];
+  if (detailId) {
+    document.getElementById(detailId).style.display = isOn ? 'block' : 'none';
+  }
+}
+
+function updateWordCount(textarea, counterId) {
+  const words = textarea.value.trim() ? textarea.value.trim().split(/\s+/).length : 0;
+  document.getElementById(counterId).textContent = words;
+}
+
+// ═══════════════════════════════════════════════════
+// PERSONS
+// ═══════════════════════════════════════════════════
+
+let personList = [];
+
+function addPerson() {
+  const input = document.getElementById('new-person-input');
+  const name = input.value.trim();
+  if (!name) return;
+
+  const person = { name, energy: null };
+  personList.push(person);
+  input.value = '';
+  renderPersonList();
+}
+
+function renderPersonList() {
+  const list = document.getElementById('person-list');
+  list.innerHTML = personList.map((p, i) => `
+    <div class="person-item">
+      <span class="person-name">${p.name}</span>
+      <button class="energy-btn plus ${p.energy === 'plus' ? 'active' : ''}" onclick="setPersonEnergy(${i}, 'plus')">+ Suma</button>
+      <button class="energy-btn minus ${p.energy === 'minus' ? 'active' : ''}" onclick="setPersonEnergy(${i}, 'minus')">- Resta</button>
+    </div>
+  `).join('');
+}
+
+function setPersonEnergy(idx, type) {
+  personList[idx].energy = personList[idx].energy === type ? null : type;
+  renderPersonList();
+}
+
+// ═══════════════════════════════════════════════════
+// SAVE ENTRY
+// ═══════════════════════════════════════════════════
+
+function saveEntry() {
+  const today = getDateStr(0);
+
+  // Calculate sleep hours
+  const sleepTime = document.getElementById('f-sleep-time').value;
+  const wakeTime = document.getElementById('f-wake-time').value;
+  let sleepHours = null;
+  if (sleepTime && wakeTime) {
+    const [sh, sm] = sleepTime.split(':').map(Number);
+    const [wh, wm] = wakeTime.split(':').map(Number);
+    let diff = (wh * 60 + wm) - (sh * 60 + sm);
+    if (diff < 0) diff += 1440;
+    sleepHours = parseFloat((diff / 60).toFixed(1));
+  }
+
+  const entry = {
+    date: today,
+    timestamp: Date.now(),
+
+    // Sleep
+    bed_time: document.getElementById('f-bed-time').value,
+    sleep_time: sleepTime,
+    wake_time: wakeTime,
+    rise_time: document.getElementById('f-rise-time').value,
+    sleep_hours: sleepHours,
+    sleep_interruptions: formState['sleep-interruptions'] || 0,
+    morning_emotion: window['morning-emotion-sel'] || [],
+    dream_recall: formState['dream-recall'],
+    dream_content: document.getElementById('f-dream-content').value,
+    dream_recall_count: formState['dream-recall-count'] || 0,
+
+    // Body
+    energy_morning: parseInt(document.getElementById('f-energy-morning').value),
+    energy_afternoon: parseInt(document.getElementById('f-energy-afternoon').value),
+    energy_night: parseInt(document.getElementById('f-energy-night').value),
+    shower: formState['shower'] || false,
+    shower_time: document.getElementById('f-shower-time').value,
+    exercise: formState['exercise'] || false,
+    exercise_type: formState['exercise-type'],
+    sitting_hours: formState['sitting-hours'] || 0,
+    water: formState['water'] || 0,
+    coffee: formState['coffee'] || 0,
+    alcohol: formState['alcohol'] || 0,
+    breakfast: formState['breakfast'],
+    breakfast_time: document.getElementById('f-breakfast-time').value,
+    breakfast_what: document.getElementById('f-breakfast-what').value,
+    breakfast_hungry: formState['breakfast-hungry'],
+    breakfast_filled: formState['breakfast-filled'],
+    lunch: formState['lunch'],
+    lunch_time: document.getElementById('f-lunch-time').value,
+    lunch_what: document.getElementById('f-lunch-what').value,
+    lunch_hungry: formState['lunch-hungry'],
+    lunch_filled: formState['lunch-filled'],
+    dinner: formState['dinner'],
+    dinner_time: document.getElementById('f-dinner-time').value,
+    dinner_what: document.getElementById('f-dinner-what').value,
+    dinner_hungry: formState['dinner-hungry'],
+    dinner_filled: formState['dinner-filled'],
+    extra_food: formState['extra-food'],
+    extra_food_what: document.getElementById('f-extra-food').value,
+    sex: formState['sex'] || false,
+    self_pleasure: formState['self-pleasure'] || false,
+    desire: parseInt(document.getElementById('f-desire').value),
+    pain: document.getElementById('f-pain').value,
+
+    // Mind
+    focus: formState['focus'],
+    focus_blockers: formState['focus-blocker'] || [],
+    stress_text: document.getElementById('f-stress').value,
+    obsessive_thoughts: document.getElementById('f-obsessive-thoughts').value,
+    main_thoughts: document.getElementById('f-main-thoughts').value,
+    angry: formState['angry'],
+    angry_what: document.getElementById('f-angry-what').value,
+    angry_resolved: formState['angry-resolved'],
+    distractions: formState['distraction'] || [],
+    procrastinated: formState['procrastinated'],
+    procrastinated_what: document.getElementById('f-procrastinated-what').value,
+    created: formState['created'] || false,
+    created_what: document.getElementById('f-created-what').value,
+    achievement: document.getElementById('f-achievement').value,
+    work_hours: formState['work-hours'] || 0,
+
+    // Social
+    persons: personList,
+    conflict: formState['conflict'],
+    conflict_what: document.getElementById('f-conflict-what').value,
+    conflict_resolved: formState['conflict-resolved'],
+    lingering_words: formState['lingering-words'],
+    lingering_what: document.getElementById('f-lingering-what').value,
+    wanted_talk: formState['wanted-talk'],
+    social_feel: formState['social-feel'],
+
+    // Environment
+    weather: formState['weather'],
+    went_out: formState['went-out'] || false,
+    outside_hours: formState['outside-hours'] || 0,
+    space_order: formState['space-order'],
+    media: formState['media'] || false,
+    media_title: document.getElementById('f-media-title').value,
+    media_genre: formState['media-genre'],
+    media_about: document.getElementById('f-media-about').value,
+    felt_good: document.getElementById('f-felt-good').value,
+    felt_bad: document.getElementById('f-felt-bad').value,
+
+    // Release
+    day_mood: parseInt(document.getElementById('f-day-mood').value),
+    day_emotions: window['day-emotion-sel'] || [],
+    day_close: formState['day-close'],
+    release_text: document.getElementById('f-release-text').value,
+    intention: document.getElementById('f-intention').value,
+  };
+
+  DB.saveEntry(entry);
+  showToast('Dia guardado');
+  updateHomeScreen();
+  showPage('home');
+}
+
+// ═══════════════════════════════════════════════════
+// ANALYSIS
+// ═══════════════════════════════════════════════════
+
+let currentAnalysisMode = 'daily';
+let moodChart = null;
+let energyChart = null;
+
+function switchAnalysis(mode) {
+  currentAnalysisMode = mode;
+  document.querySelectorAll('.analysis-tab').forEach((t,i) => {
+    t.classList.toggle('active', ['daily','weekly','monthly'][i] === mode);
+  });
+  updateAnalysis(mode);
+}
+
+function updateAnalysis(mode) {
+  const container = document.getElementById('analysis-content');
+  const entries = DB.getEntries();
+
+  if (!entries.length) {
+    container.innerHTML = `<div class="no-data"><i class="lucide-telescope"></i><p>Aun no hay datos que analizar.<br>Registra tu primer dia para ver los analisis.</p></div>`;
+    return;
+  }
+
+  const today = getDateStr(0);
+  let relevantEntries = [];
+
+  if (mode === 'daily') {
+    relevantEntries = entries.filter(e => e.date === today);
+    if (!relevantEntries.length) {
+      container.innerHTML = `<div class="no-data"><i class="lucide-calendar-x"></i><p>No registraste hoy todavia.<br>Completa tu registro diario para ver el analisis.</p></div>`;
+      return;
+    }
+    renderDailyAnalysis(relevantEntries[0], container);
+  } else if (mode === 'weekly') {
+    relevantEntries = entries.filter(e => {
+      const d = new Date(e.date);
+      const now = new Date();
+      return (now - d) / 86400000 <= 7;
+    });
+    renderPeriodAnalysis(relevantEntries, container, 'semana');
+  } else {
+    relevantEntries = entries.filter(e => {
+      const d = new Date(e.date);
+      const now = new Date();
+      return (now - d) / 86400000 <= 30;
+    });
+    renderPeriodAnalysis(relevantEntries, container, 'mes');
+  }
+}
+
+function renderDailyAnalysis(entry, container) {
+  const sleepInfo = entry.sleep_hours ? `${entry.sleep_hours}h de sueno` : 'Sin datos de sueno';
+  const energyAvg = ((entry.energy_morning + entry.energy_afternoon + entry.energy_night) / 3).toFixed(1);
+
+  container.innerHTML = `
+    <div class="chart-card">
+      <h3>Resumen del dia</h3>
+      <div class="quick-stats">
+        <div class="stat-card"><div class="stat-val">${entry.day_mood || '--'}/10</div><div class="stat-label">Humor general</div></div>
+        <div class="stat-card"><div class="stat-val">${entry.sleep_hours || '--'}h</div><div class="stat-label">Sueno</div></div>
+        <div class="stat-card"><div class="stat-val">${energyAvg}</div><div class="stat-label">Energia promedio</div></div>
+        <div class="stat-card"><div class="stat-val">${entry.work_hours || 0}h</div><div class="stat-label">Trabajo</div></div>
+      </div>
+    </div>
+
+    <div class="section-title">Energia durante el dia</div>
+    <div class="chart-card">
+      <canvas id="energy-day-chart" height="160"></canvas>
+    </div>
+
+    ${entry.day_emotions && entry.day_emotions.length ? `
+    <div class="section-title">Emociones del dia</div>
+    <div class="chart-card">
+      <div class="btn-group">${entry.day_emotions.map(e => `<span class="choice-btn selected" style="cursor:default">${e}</span>`).join('')}</div>
+    </div>` : ''}
+
+    ${entry.achievement ? `
+    <div class="section-title">Tu logro de hoy</div>
+    <div class="insight-card"><div class="insight-label">Conseguido</div><p>${entry.achievement}</p></div>` : ''}
+
+    ${entry.intention ? `
+    <div class="section-title">Intencion para manana</div>
+    <div class="insight-card"><div class="insight-label">Manana</div><p>${entry.intention}</p></div>` : ''}
+
+    ${entry.release_text ? `
+    <div class="section-title">Tu desahogo de hoy</div>
+    <div class="chart-card" style="position:relative">
+      <h3>Analisis de texto</h3>
+      ${analyzeText(entry.release_text)}
+    </div>` : ''}
+  `;
+
+  setTimeout(() => {
+    const ctx = document.getElementById('energy-day-chart');
+    if (!ctx) return;
+    if (energyChart) energyChart.destroy();
+    energyChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Manana', 'Tarde', 'Noche'],
+        datasets: [{
+          data: [entry.energy_morning, entry.energy_afternoon, entry.energy_night],
+          backgroundColor: ['rgba(200,169,110,0.7)', 'rgba(200,169,110,0.5)', 'rgba(200,169,110,0.3)'],
+          borderColor: 'rgba(200,169,110,0.9)',
+          borderWidth: 1,
+          borderRadius: 8,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { min: 0, max: 10, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#5a5868' } },
+          x: { grid: { display: false }, ticks: { color: '#9896a0' } }
+        }
+      }
+    });
+  }, 100);
+}
+
+function analyzeText(text) {
+  if (!text) return '';
+  const words = text.toLowerCase().split(/\s+/);
+  const wordCount = words.length;
+
+  const negativeWords = ['mal','triste','enojado','molesto','estresado','cansado','harto','frustrado','preocupado','ansioso','terrible','horrible','peor','odio','miedo','solo'];
+  const positiveWords = ['bien','feliz','contento','tranquilo','alegre','energia','logre','pude','mejor','genial','bueno','agradecido','motivado','descanse','disfruté'];
+
+  const negCount = words.filter(w => negativeWords.some(n => w.includes(n))).length;
+  const posCount = words.filter(w => positiveWords.some(p => w.includes(p))).length;
+
+  const tone = negCount > posCount * 1.5 ? 'Mayormente negativo' : posCount > negCount * 1.5 ? 'Mayormente positivo' : 'Mixto o neutral';
+
+  const freq = {};
+  const stopWords = new Set(['que','de','el','la','los','las','en','un','una','y','a','se','me','te','le','no','si','con','por','es','su','lo','al','del','como','pero','mas','ya','fue','hay']);
+  words.forEach(w => {
+    const clean = w.replace(/[^a-z]/g, '');
+    if (clean.length > 3 && !stopWords.has(clean)) freq[clean] = (freq[clean] || 0) + 1;
+  });
+  const topWords = Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0,5).map(([w]) => w);
+
+  return `
+    <div class="quick-stats" style="margin-bottom:12px">
+      <div class="stat-card"><div class="stat-val">${wordCount}</div><div class="stat-label">Palabras escritas</div></div>
+      <div class="stat-card"><div class="stat-val" style="font-size:16px">${tone}</div><div class="stat-label">Tono emocional</div></div>
+    </div>
+    ${topWords.length ? `<p style="color:var(--text3);font-size:12px;margin-bottom:8px">PALABRAS MAS FRECUENTES</p><div class="btn-group">${topWords.map(w => `<span class="choice-btn" style="cursor:default">${w}</span>`).join('')}</div>` : ''}
+  `;
+}
+
+function renderPeriodAnalysis(entries, container, period) {
+  if (entries.length < 2) {
+    container.innerHTML = `<div class="no-data"><i class="lucide-hourglass"></i><p>Necesito mas registros para analizar esta ${period}.<br>Vuelve en unos dias.</p></div>`;
+    return;
+  }
+
+  const sorted = [...entries].sort((a,b) => a.date.localeCompare(b.date));
+  const patterns = findPatterns(entries);
+
+  container.innerHTML = `
+    <div class="chart-card">
+      <h3>Humor de la ${period}</h3>
+      <canvas id="mood-period-chart" height="180"></canvas>
+    </div>
+
+    <div class="chart-card">
+      <h3>Horas de sueno</h3>
+      <canvas id="sleep-period-chart" height="160"></canvas>
+    </div>
+
+    <div class="section-title">Estadisticas</div>
+    ${renderPeriodStats(entries)}
+
+    <div class="section-title">Patrones detectados</div>
+    <div class="pattern-list" id="pattern-list">
+      ${patterns.length ? patterns.slice(0,6).map((p,i) => {
+        const colors = ['gold','blue','green','gold','red','blue'];
+        return `<div class="pattern-item ${colors[i%6]}"><div class="pattern-type">Patron</div><p>${p}</p></div>`;
+      }).join('') : `<div class="pattern-item blue"><div class="pattern-type">En progreso</div><p>Necesito mas dias para encontrar patrones solidos. Sigue registrando.</p></div>`}
+    </div>
+
+    ${renderTopEmotions(entries)}
+    ${renderBestWorstDays(sorted)}
+  `;
+
+  setTimeout(() => {
+    const labels = sorted.map(e => e.date.slice(5));
+    const moodData = sorted.map(e => e.day_mood || null);
+    const sleepData = sorted.map(e => e.sleep_hours || null);
+
+    const moodCtx = document.getElementById('mood-period-chart');
+    if (moodCtx) {
+      if (moodChart) moodChart.destroy();
+      moodChart = new Chart(moodCtx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            data: moodData,
+            borderColor: '#c8a96e',
+            backgroundColor: 'rgba(200,169,110,0.1)',
+            tension: 0.4,
+            fill: true,
+            pointBackgroundColor: '#c8a96e',
+            pointRadius: 4,
+            spanGaps: true,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { min: 0, max: 10, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#5a5868' } },
+            x: { grid: { display: false }, ticks: { color: '#9896a0', maxTicksLimit: 7 } }
+          }
+        }
+      });
+    }
+
+    const sleepCtx = document.getElementById('sleep-period-chart');
+    if (sleepCtx) {
+      new Chart(sleepCtx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            data: sleepData,
+            backgroundColor: (ctx) => {
+              const val = ctx.raw;
+              if (!val) return 'rgba(90,90,100,0.3)';
+              if (val >= 7) return 'rgba(90,184,138,0.7)';
+              if (val >= 6) return 'rgba(200,169,110,0.7)';
+              return 'rgba(224,90,90,0.7)';
+            },
+            borderRadius: 6,
+            spanGaps: true,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { min: 0, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#5a5868' } },
+            x: { grid: { display: false }, ticks: { color: '#9896a0', maxTicksLimit: 7 } }
+          }
+        }
+      });
+    }
+  }, 100);
+}
+
+function renderPeriodStats(entries) {
+  const withMood = entries.filter(e => e.day_mood);
+  const withSleep = entries.filter(e => e.sleep_hours);
+  const avgMood = withMood.length ? avg(withMood.map(e => e.day_mood)).toFixed(1) : '--';
+  const avgSleep = withSleep.length ? avg(withSleep.map(e => e.sleep_hours)).toFixed(1) : '--';
+  const showerDays = entries.filter(e => e.shower).length;
+  const exerciseDays = entries.filter(e => e.exercise).length;
+  const mediadays = entries.filter(e => e.media).length;
+  const totalWords = entries.reduce((a,b) => a + (b.release_text ? b.release_text.split(/\s+/).length : 0), 0);
+
+  return `<div class="quick-stats">
+    <div class="stat-card"><div class="stat-val">${avgMood}</div><div class="stat-label">Humor promedio</div></div>
+    <div class="stat-card"><div class="stat-val">${avgSleep}h</div><div class="stat-label">Sueno promedio</div></div>
+    <div class="stat-card"><div class="stat-val">${showerDays}</div><div class="stat-label">Dias con ducha</div></div>
+    <div class="stat-card"><div class="stat-val">${exerciseDays}</div><div class="stat-label">Dias con ejercicio</div></div>
+    <div class="stat-card"><div class="stat-val">${mediadays}</div><div class="stat-label">Series o peliculas</div></div>
+    <div class="stat-card"><div class="stat-val">${totalWords}</div><div class="stat-label">Palabras escritas</div></div>
+  </div>`;
+}
+
+function renderTopEmotions(entries) {
+  const allEmotions = entries.flatMap(e => e.day_emotions || []);
+  if (!allEmotions.length) return '';
+  const freq = {};
+  allEmotions.forEach(e => freq[e] = (freq[e] || 0) + 1);
+  const top = Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0,6);
+
+  return `<div class="section-title">Emociones mas frecuentes</div>
+    <div class="chart-card">
+      <div class="btn-group">${top.map(([e,c]) => `<span class="choice-btn selected" style="cursor:default">${e} <span style="opacity:0.6;font-size:11px">${c}x</span></span>`).join('')}</div>
+    </div>`;
+}
+
+function renderBestWorstDays(entries) {
+  const withMood = entries.filter(e => e.day_mood);
+  if (withMood.length < 2) return '';
+  const sorted = [...withMood].sort((a,b) => b.day_mood - a.day_mood);
+  const best = sorted[0];
+  const worst = sorted[sorted.length-1];
+
+  return `<div class="section-title">Dias destacados</div>
+    <div class="pattern-item green" style="margin-bottom:10px">
+      <div class="pattern-type">Mejor dia</div>
+      <p>${best.date} — Humor ${best.day_mood}/10${best.weather ? `, clima ${best.weather}` : ''}${best.day_close ? `, cerraste con "${best.day_close}"` : ''}</p>
+    </div>
+    <div class="pattern-item red">
+      <div class="pattern-type">Dia mas dificil</div>
+      <p>${worst.date} — Humor ${worst.day_mood}/10${worst.weather ? `, clima ${worst.weather}` : ''}${worst.day_close ? `, cerraste con "${worst.day_close}"` : ''}</p>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name)?.classList.add('active');
+
+  if (name === 'analysis') updateAnalysis(currentAnalysisMode);
+  if (name === 'home') updateHomeScreen();
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════
+// EXPRESS MODE
+// ═══════════════════════════════════════════════════
+
+function openExpressMode() {
+  document.getElementById('express-modal').classList.add('open');
+}
+
+function saveExpressNote() {
+  const text = document.getElementById('express-text').value.trim();
+  if (!text) { showToast('Escribe algo primero'); return; }
+  DB.saveExpressNote({ date: getDateStr(0), timestamp: Date.now(), text });
+  document.getElementById('express-text').value = '';
+  document.getElementById('express-wc').textContent = '0';
+  closeModal('express-modal');
+  showToast('Nota guardada');
+}
+
+// ═══════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════
+
+function openChangePinModal() {
+  document.getElementById('change-pin-modal').classList.add('open');
+}
+
+function changePinConfirm() {
+  const current = document.getElementById('current-pin-input').value;
+  const newPin = document.getElementById('new-pin-input').value;
+  const confirm = document.getElementById('confirm-pin-input').value;
+  const msg = document.getElementById('change-pin-msg');
+
+  if (hashPin(current) !== DB.get('pin')) { msg.textContent = 'PIN actual incorrecto'; msg.className = 'pin-msg error'; return; }
+  if (newPin.length !== 4) { msg.textContent = 'El PIN debe tener 4 digitos'; msg.className = 'pin-msg error'; return; }
+  if (newPin !== confirm) { msg.textContent = 'Los PINs no coinciden'; msg.className = 'pin-msg error'; return; }
+
+  DB.set('pin', hashPin(newPin));
+  closeModal('change-pin-modal');
+  showToast('PIN actualizado');
+}
+
+function exportData() {
+  const data = {
+    entries: DB.getEntries(),
+    express_notes: DB.getExpressNotes(),
+    exported_at: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `mirrorme-backup-${getDateStr(0)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Backup exportado');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.entries) DB.set('entries', data.entries);
+      if (data.express_notes) DB.set('express_notes', data.express_notes);
+      showToast('Datos importados correctamente');
+      updateHomeScreen();
+    } catch (err) {
+      showToast('Error al importar el archivo');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function openClearModal() {
+  document.getElementById('clear-modal').classList.add('open');
+}
+
+function clearAllData() {
+  DB.del('entries');
+  DB.del('express_notes');
+  closeModal('clear-modal');
+  showToast('Datos eliminados');
+  updateHomeScreen();
+}
+
+// ═══════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+function getDateStr(offsetDays = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return getDateStrFrom(d);
+}
+
+function getDateStrFrom(d) {
+  return d.toISOString().split('T')[0];
+}
+
+function getNextDateStr(dateStr) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + 1);
+  return getDateStrFrom(d);
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.classList.remove('open');
+  });
+});
+
+// ═══════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════
+
+initPin();
+</script>
+</body>
+</html>
